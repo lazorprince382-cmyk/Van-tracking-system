@@ -56,8 +56,8 @@ smartRoutesRouter.post("/smart-routes/:vanId/complete", async (req, res) => {
   const eventType = parsed.data.attendanceStatus === "ABSENT" ? "ABSENT" : parsed.data.period === "MORNING" ? "PICKUP" : "DROP_OFF"; const { start, end } = dayRange();
   const existing = await prisma.childEvent.findFirst({ where: { childId: parsed.data.childId, occurredAt: { gte: start, lt: end }, trip: { vanId }, OR: [{ eventType: parsed.data.period === "MORNING" ? "PICKUP" : "DROP_OFF" }, { eventType: "ABSENT", notes: { contains: parsed.data.period } }] } });
   if (existing) return res.status(409).json({ error: "This stop is already completed" });
-  let trip = await prisma.trip.findFirst({ where: { organizationId: staff.organizationId, vanId, startTime: { gte: start, lt: end }, endTime: null }, select: { id: true } });
-  if (!trip) trip = await prisma.trip.create({ data: { organizationId: staff.organizationId, vanId, routeName: `${parsed.data.period} smart route`, createdByUserId: staff.userId }, select: { id: true } });
+  const trip = await prisma.trip.findFirst({ where: { organizationId: staff.organizationId, vanId, startTime: { gte: start, lt: end }, endTime: null }, select: { id: true } });
+  if (!trip) return res.status(400).json({ error: "Start the journey first so this confirmation is saved under the correct route." });
   const event = await prisma.childEvent.create({ data: { organizationId: staff.organizationId, tripId: trip.id, childId: parsed.data.childId, eventType, occurredAt: new Date(), notes: parsed.data.attendanceStatus === "ABSENT" ? `ABSENT:${parsed.data.period} - Child was not available at door/van` : `PRESENT:${parsed.data.period} - Confirmed from smart route` }, select: { id: true, occurredAt: true } });
   res.status(201).json({ event });
 });

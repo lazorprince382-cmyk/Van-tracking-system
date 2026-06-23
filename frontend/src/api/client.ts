@@ -83,16 +83,28 @@ export const api = {
       body: JSON.stringify({ name, lat, lon }),
     });
   },
-  trips() {
-    return req<{ trips: Array<{ id: string; vanId: string; routeName?: string | null; startTime: string }> }>(
-      "/api/trips"
+  trips(date?: string, vanId?: string) {
+    const query = new URLSearchParams();
+    if (date) query.set("date", date);
+    if (vanId) query.set("vanId", vanId);
+    return req<{ trips: import("../types").Trip[] }>(
+      `/api/trips${query.toString() ? `?${query}` : ""}`
     );
   },
   createTrip(vanId: string, routeName?: string) {
-    return req<{ trip: { id: string } }>("/api/trips", {
+    return req<{ trip: import("../types").Trip }>("/api/trips", {
       method: "POST",
       body: JSON.stringify({ vanId, routeName }),
     });
+  },
+  activeTrip(vanId: string) {
+    return req<{ trip: import("../types").Trip | null }>(`/api/trips/active?vanId=${encodeURIComponent(vanId)}`);
+  },
+  endTrip(tripId: string) {
+    return req<{ trip: import("../types").Trip }>(`/api/trips/${tripId}/end`, { method: "POST" });
+  },
+  tripDetails(tripId: string) {
+    return req<{ trip: import("../types").Trip }>(`/api/trips/${tripId}/details`);
   },
   children() {
     return req<{ children: import("../types").Child[] }>("/api/children");

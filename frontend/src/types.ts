@@ -18,7 +18,20 @@ export type Van = {
 };
 
 export type StopPlace = { id: string; name: string; lat: number; lon: number; createdAt: string };
-export type Trip = { id: string; vanId: string; routeName?: string | null; startTime: string; endTime?: string | null };
+export type TripEvent = {
+  id: string;
+  eventType: "PICKUP" | "DROP_OFF" | "ABSENT" | "PRESENT";
+  occurredAt: string;
+  notes?: string | null;
+  child: VanChild;
+};
+export type Trip = {
+  id: string; vanId: string; routeName?: string | null; startTime: string; endTime?: string | null;
+  van?: { name: string; plateNumber?: string | null; routeName?: string | null };
+  telemetryPoints?: TrackPoint[];
+  childEvents?: TripEvent[];
+  summary?: { distanceMeters: number; distanceKm: number; childEventsCount: number };
+};
 export type TrackPoint = { id: string; lat: number; lon: number; timestamp: string };
 export type HistoryRecord = { childId: string; childName: string; firstName?: string | null; lastName?: string | null; className?: string | null; residenceRoute?: string | null; parentPhone?: string | null; photoData?: string | null; vanId: string; vanName: string; period: ServicePeriod; periods?: ServicePeriod[]; pickupTime?: string | null; dropoffTime?: string | null; presentTime?: string | null; absentTime?: string | null; status: "NOT_RECORDED" | "PRESENT" | "PICKED_UP" | "DROPPED_OFF" | "ABSENT"; notes?: string | null };
 export type DriverAccount = { id: string; email: string; fullName?: string | null; phone?: string | null; assignedVanId?: string | null; assignedVan?: { name: string } | null; createdAt: string };
