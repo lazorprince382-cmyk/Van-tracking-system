@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 
 export function setToken(token: string) {
   localStorage.setItem("vt_token", token);
@@ -18,7 +18,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   } catch {
-    throw new Error("The Ocean Ride server is offline. Please start Van Tracker and try again.");
+    throw new Error("The Ocean Ride server is offline or unreachable. Please check the backend API URL and try again.");
   }
   const body = await response.json().catch(() => ({}));
   if (response.status === 401 && path !== "/api/auth/login") {
