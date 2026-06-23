@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  DRIVER
+}
+
+enum ChildEventType {
+  PICKUP
+  DROP_OFF
+  ABSENT
+  PRESENT
+}
+
+enum ServicePeriod {
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  contactEmail String?
+  schoolStartTime String? @default("08:00")
+  pickupGraceMinutes Int @default(15)
+  createdAt DateTime @default(now())
+
+  users           User[]
+  vans            Van[]
+  children       Child[]
+  stopsPlaces    StopPlace[]
+  trips          Trip[]
+  childEvents    ChildEvent[]
+  telemetryPoints TelemetryPoint[]
+  vanLivePositions VanLivePosition[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  email         String
+  passwordHash String
+  role          UserRole @default(STAFF)
+  fullName      String?
+  phone         String?
+  assignedVanId String?
+  assignedVan   Van? @relation("DriverVan", fields: [assignedVanId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+
+  createdTrips Trip[] @relation("TripsCreatedByUser")
+
+  @@unique([organizationId, email])
+}
+
+model Van {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name       String
+  plateNumber String?
+  photoData String?
+  driverName String?
+  driverPhone String?
+  capacity Int @default(14)
+  routeName String?
+  morningDeparture String?
+  afternoonDeparture String?
+  eveningDeparture String?
+  deviceKey  String   @unique
+  createdAt  DateTime @default(now())
+
+  trips            Trip[]
+  telemetryPoints TelemetryPoint[]
+  livePosition     VanLivePosition?
+  assignments      TransportAssignment[]
+  drivers          User[] @relation("DriverVan")
+  cameras          VanCamera[]
+}
+
+model VanCamera {
+  id String @id @default(cuid())
+  vanId String
+  van Van @relation(fields: [vanId], references: [id], onDelete: Cascade)
+  name String
+  position String
+  streamType String
+  streamUrl String
+  enabled Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([vanId])
+}
+
+model Child {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  firstName String
+  lastName  String
+
+  className String?
+  parentPhone String?
+  residenceRoute String?
+  photoData String?
+  stopLabel String?
+  homeLat Float?
+  homeLon Float?
+
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  childEvents ChildEvent[]
+  assignments TransportAssignment[]
+}
+
+model TransportAssignment {
+  id String @id @default(cuid())
+  childId String
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  vanId String
+  van Van @relation(fields: [vanId], references: [id], onDelete: Cascade)
+  period ServicePeriod
+  stopOrder Int @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([childId, period])
+  @@index([vanId, period])
+}
+
+model StopPlace {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name      String
+  lat       Float
+  lon       Float
+  createdAt DateTime @default(now())
+
+  childEvents ChildEvent[]
+
+  @@index([organizationId])
+  @@index([organizationId, lat, lon])
+}
+
+model Trip {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  vanId     String
+  van       Van     @relation(fields: [vanId], references: [id], onDelete: Cascade)
+
+  routeName String?
+  startTime DateTime @default(now())
+  endTime   DateTime?
+
+  createdByUserId String?
+  createdByUser   User? @relation(fields: [createdByUserId], references: [id], name: "TripsCreatedByUser")
+
+  childEvents       ChildEvent[]
+  telemetryPoints   TelemetryPoint[]
+
+  @@index([organizationId, vanId, startTime])
+}
+
+model ChildEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  tripId   String
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  childId  String
+  child    Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  eventType ChildEventType
+  occurredAt DateTime
+  notes      String?
+
+  stopPlaceId String?
+  stopPlace   StopPlace? @relation(fields: [stopPlaceId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, tripId, occurredAt])
+  @@index([organizationId, childId, occurredAt])
+}
+
+model TelemetryPoint {
+  id        String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  vanId String
+  van   Van    @relation(fields: [vanId], references: [id], onDelete: Cascade)
+
+  tripId String?
+  trip   Trip?  @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  timestamp DateTime
+  lat Float
+  lon Float
+  speed Float?
+  heading Float?
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, vanId, timestamp])
+  @@index([organizationId, tripId, timestamp])
+}
+
+model VanLivePosition {
+  id        String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  vanId String @unique
+  van   Van    @relation(fields: [vanId], references: [id], onDelete: Cascade)
+
+  lat Float
+  lon Float
+  timestamp DateTime
+  updatedAt DateTime @default(now())
+}
