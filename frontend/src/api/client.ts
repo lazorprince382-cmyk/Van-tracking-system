@@ -1,4 +1,9 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+const configuredApiBase = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL;
+const railwayBackendFallback =
+  typeof window !== "undefined" && window.location.hostname.includes("railway.app")
+    ? "https://ocean-ride-production.up.railway.app"
+    : undefined;
+const API_BASE = configuredApiBase || railwayBackendFallback || "http://localhost:4000";
 
 export function setToken(token: string) {
   localStorage.setItem("vt_token", token);
